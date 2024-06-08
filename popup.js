@@ -1,0 +1,43 @@
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('link-form');
+  const urlInput = document.getElementById('url');
+  const pageTitleInput = document.getElementById('page-title');
+  const dateInput = document.getElementById('date');
+
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const currentTab = tabs[0];
+    urlInput.value = currentTab.url;
+    pageTitleInput.value = currentTab.title;
+  });
+
+  const today = new Date().toISOString().split('T')[0];
+  dateInput.value = today;
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(form);
+    const data = {
+      url: formData.get('url'),
+      pageTitle: formData.get('page-title'),
+      date: formData.get('date'),
+      folder: formData.get('folder'),
+      tags: formData.get('tags'),
+      notes: formData.get('notes')
+    };
+
+    chrome.runtime.sendMessage({ action: 'saveLinkToObsidian', data }, (response) => {
+      if (response.success) {
+        chrome.notifications.create({
+          type: 'basic',
+          iconUrl: 'icon.png',
+          title: 'Obsidian Link Saver',
+          message: 'Link saved to Obsidian successfully!'
+        });
+        window.close();
+      } else {
+        alert(response.error);
+      }
+    });
+  });
+});
