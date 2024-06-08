@@ -1,25 +1,44 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>Obsidian Link Saver Options</title>
-  <script src="options.js"></script>
-</head>
-<body>
-  <h1>Obsidian Link Saver Options</h1>
-  <form id="options-form">
-    <label for="api-url">API URL:</label>
-    <input type="text" id="api-url" name="api-url" placeholder="https://127.0.0.1"><br>
+  <head>
+    <title>Obsidian Link Saver Options</title>
+    <script src="options.js"></script>
+  </head>
+  <body>
+    <h1>Obsidian Link Saver Options</h1>
+    <form id="options-form">
+      <label for="api-url">API URL:</label>
+      <input
+        type="text"
+        id="api-url"
+        name="api-url"
+        placeholder="https://127.0.0.1"
+      /><br />
 
-    <label for="api-port">API Port:</label>
-    <input type="text" id="api-port" name="api-port" placeholder="27124"><br>
+      <label for="api-port">API Port:</label>
+      <input
+        type="text"
+        id="api-port"
+        name="api-port"
+        placeholder="27124"
+      /><br />
 
-    <label for="api-key">API Key:</label>
-    <input type="text" id="api-key" name="api-key"><br>
+      <label for="api-key">API Key:</label>
+      <input type="text" id="api-key" name="api-key" /><br />
 
-    <label for="default-folder">Default Folder:</label>
-    <input type="text" id="default-folder" name="default-folder"><br>
+      <label for="default-folder">Default Folder:</label>
+      <input
+        type="text"
+        id="default-folder"
+        name="default-folder"
+        placeholder="Links"
+      /><br />
+      <p>
+        If no folder is specified when saving a link, it will be saved to the
+        default folder.
+      </p>
 
-    <button type="submit">Save</button>
-  </form>
-</body>
+      <button type="submit">Save</button>
+    </form>
+  </body>
 </html>

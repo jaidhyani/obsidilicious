@@ -33,6 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const today = new Date().toISOString().split("T")[0];
   dateInput.value = today;
 
+  const folderInput = document.getElementById("folder");
+
+  chrome.storage.sync.get(["defaultFolder"], (result) => {
+    const defaultFolder = result.defaultFolder || "Links";
+    folderInput.placeholder = defaultFolder;
+    folderInput.value = defaultFolder;
+  });
+
   form.addEventListener("submit", (event) => {
     event.preventDefault();
 
@@ -66,7 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function getFolderFromPath(path) {
-  const parts = path.split('/');
+  const parts = path.split("/");
   parts.pop(); // Remove the filename
-  return parts.join('/');
+  return parts.join("/");
 }
