@@ -49,7 +49,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === "saveLinkToObsidian") {
-    const { url, pageTitle, date, folder, tags, notes } = request.data;
+    const { url, pageTitle, date, folder, tags, notes, originalPath } =
+      request.data;
     const filename = sanitizeFilename(pageTitle) + ".md";
     const markdownContent = `---
 url: ${url}
@@ -69,12 +70,12 @@ ${notes}
         const apiKey = result.apiKey || "";
         const defaultFolder = result.defaultFolder || "Links";
 
-        const requestUrl = `${apiUrl}:${apiPort}/vault/${
-          folder || defaultFolder
-        }/${filename}`;
+        const requestUrl = originalPath
+          ? `${apiUrl}:${apiPort}/vault/${originalPath}`
+          : `${apiUrl}:${apiPort}/vault/${folder || defaultFolder}/${filename}`;
 
         fetch(requestUrl, {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "text/markdown",
             Authorization: `Bearer ${apiKey}`,
