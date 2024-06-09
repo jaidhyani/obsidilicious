@@ -7,7 +7,7 @@
     "activeTab",
     "storage",
     "notifications",
-    "https://127.0.0.1:*/*"
+    "*://localhost/*"
   ],
   "background": {
     "scripts": ["background.js"],

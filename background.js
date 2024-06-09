@@ -180,7 +180,7 @@ async function getConfig() {
         return reject(chrome.runtime.lastError);
       }
       resolve({
-        apiUrl: result.apiUrl || "https://127.0.0.1",
+        apiUrl: result.apiUrl || "https://localhost",
         apiPort: result.apiPort || "27124",
         apiKey: result.apiKey || "",
         defaultFolder: result.defaultFolder || "Links",

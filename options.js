@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const refreshTagsButton = document.getElementById('refresh-tags');
 
   chrome.storage.sync.get(['apiUrl', 'apiPort', 'apiKey', 'defaultFolder'], (result) => {
-    apiUrlInput.value = result.apiUrl || 'https://127.0.0.1';
+    apiUrlInput.value = result.apiUrl || 'https://localhost';
     apiPortInput.value = result.apiPort || '27124';
     apiKeyInput.value = result.apiKey || '';
     defaultFolderInput.value = result.defaultFolder || '';
