@@ -1,5 +1,5 @@
 {
-  "manifest_version": 2,
+  "manifest_version": 3,
   "name": "Obsidilicious",
   "version": "1.0",
   "description": "Save links to Obsidian using the local REST API plugin.",
