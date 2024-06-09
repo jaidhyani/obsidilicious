@@ -1,13 +1,13 @@
-# Obsidilicious
+# Obsidilicious 
+![Obsidilicious](icon.png)
 
-Welcome to Obsidilicious, a Chrome extension that lets you save bookmarks
-directly to your Obsidian vault. This tool combines the power of Obsidian's
-note-taking capabilities with the convenience of a bookmarking tool.
+I wanted a way to easily save links in Obsidian from the browser with easy tag management so I made this. 
 
-## Prerequisites
+![It looks like this in the browser](screenshots/fill-in-details-screenshot.png) 
+![Saved link in Obsidian](screenshots/obsidian-saved-link.PNG)
 
-- **Google Chrome**: Ensure you have the latest version of Chrome installed.
-- **Obsidian**: Make sure you have Obsidian installed and set up on your computer.
+You'll need Obsidian and a Chromium-based browser.
+
 
 ## Setup
 
