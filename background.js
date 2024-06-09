@@ -89,15 +89,17 @@ function checkLinkExists(url) {
     });
   });
 }
+
+
 function saveLinkToObsidian(data) {
   return new Promise((resolve, reject) => {
-    const { url, pageTitle, date, folder, tags, notes, originalPath } = data;
+    const { url, pageTitle, datetime, folder, tags, notes, originalPath } = data;
     const filename = sanitizeFilename(pageTitle) + ".md";
     const markdownContent = `---
 url: ${url}
-page-title: ${pageTitle}
-date: ${date}
-tags: ${tags}
+page-title: "${pageTitle}"
+datetime: ${datetime}
+tags: [${tags.split(',').map(tag => tag.trim().replace(/^#/, '')).filter(tag => tag.length > 0).join(', ')}]
 ---
 
 ${notes}
@@ -137,10 +139,7 @@ ${notes}
 }
 
 function sanitizeFilename(filename) {
-  return filename
-    .replace(/[/\\?%*:|"<>.]/g, "_")
-    .replace(/\s+/g, "_")
-    .slice(0, 255);
+  return filename.replace(/[/\\?%*:|"<>.]/g, '_').replace(/\s+/g, ' ').trim();
 }
 
 
