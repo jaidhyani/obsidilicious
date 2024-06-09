@@ -21,191 +21,170 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 });
 
-function checkLinkExists(url) {
-  return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(["apiUrl", "apiPort", "apiKey"], (result) => {
-      const apiUrl = result.apiUrl || "https://127.0.0.1";
-      const apiPort = result.apiPort || "27124";
-      const apiKey = result.apiKey || "";
+async function checkLinkExists(url) {
+  try {
+    const { apiUrl, apiPort, apiKey } = await getConfig();
+    const requestUrl = `${apiUrl}:${apiPort}/search/`;
+    const requestBody = JSON.stringify({
+      or: [
+        {
+          "===": [
+            {
+              var: "frontmatter.url",
+            },
+            url,
+          ],
+        },
+        {
+          glob: [
+            {
+              var: "frontmatter.url-glob",
+            },
+            url,
+          ],
+        },
+      ],
+    });
 
-      const requestUrl = `${apiUrl}:${apiPort}/search/`;
-      const requestBody = JSON.stringify({
-        or: [
-          {
-            "===": [
-              {
-                var: "frontmatter.url",
-              },
-              url,
-            ],
-          },
-          {
-            glob: [
-              {
-                var: "frontmatter.url-glob",
-              },
-              url,
-            ],
-          },
-        ],
-      });
-
-      fetch(requestUrl, {
-        method: "POST",
+    const response = await fetch(requestUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/vnd.olrapi.jsonlogic+json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: requestBody,
+    });
+    if (!response.ok) {
+      throw new Error("Error searching for link");
+    }
+    const data = await response.json();
+    if (data.length > 0) {
+      const file = data[0];
+      const noteResponse = await fetch(`${apiUrl}:${apiPort}/vault/${file.filename}`, {
         headers: {
-          "Content-Type": "application/vnd.olrapi.jsonlogic+json",
+          Accept: "application/vnd.olrapi.note+json",
           Authorization: `Bearer ${apiKey}`,
         },
-        body: requestBody,
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Error searching for link");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          if (data.length > 0) {
-            const file = data[0];
-            fetch(`${apiUrl}:${apiPort}/vault/${file.filename}`, {
-              headers: {
-                Accept: "application/vnd.olrapi.note+json",
-                Authorization: `Bearer ${apiKey}`,
-              },
-            })
-              .then((response) => {
-                if (!response.ok) {
-                  throw new Error("Error retrieving note");
-                }
-                return response.json();
-              })
-              .then((note) => resolve({ exists: true, note: note }))
-              .catch((error) => reject(error));
-          } else {
-            resolve({ exists: false });
-          }
-        })
-        .catch((error) => reject(error));
-    });
-  });
+      });
+      if (!noteResponse.ok) {
+        throw new Error("Error retrieving note");
+      }
+      const note = await noteResponse.json();
+      return { exists: true, note: note };
+    } else {
+      return { exists: false };
+    }
+  } catch (error) {
+    console.error("Error checking if link exists:", error);
+    throw error;
+  }
 }
 
-
-function saveLinkToObsidian(data) {
-  return new Promise((resolve, reject) => {
+async function saveLinkToObsidian(data) {
+  try {
     const { url, pageTitle, datetime, folder, tags, notes, originalPath } = data;
     const filename = sanitizeFilename(pageTitle) + ".md";
     const markdownContent = `---
 url: ${url}
 page-title: "${pageTitle}"
 datetime: ${datetime}
-tags: [${tags.split(',').map(tag => tag.trim().replace(/^#/, '')).filter(tag => tag.length > 0).join(', ')}]
+tags: [${tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0).join(', ')}]
 ---
 
 ${notes}
 `;
 
-    chrome.storage.sync.get(
-      ["apiUrl", "apiPort", "apiKey", "defaultFolder"],
-      (result) => {
-        const apiUrl = result.apiUrl || "https://127.0.0.1";
-        const apiPort = result.apiPort || "27124";
-        const apiKey = result.apiKey || "";
-        const defaultFolder = result.defaultFolder || "Links";
+    const { apiUrl, apiPort, apiKey, defaultFolder } = await getConfig();
 
-        const requestUrl = originalPath
-          ? `${apiUrl}:${apiPort}/vault/${originalPath}`
-          : `${apiUrl}:${apiPort}/vault/${folder || defaultFolder}/${filename}`;
+    const requestUrl = originalPath
+      ? `${apiUrl}:${apiPort}/vault/${originalPath}`
+      : `${apiUrl}:${apiPort}/vault/${folder || defaultFolder}/${filename}`;
 
-        fetch(requestUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "text/markdown",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: markdownContent,
-        })
-          .then((response) => {
-            if (response.ok) {
-              resolve({ success: true });
-            } else {
-              reject(new Error("Error saving link to Obsidian"));
-            }
-          })
-          .catch((error) => reject(error));
+    const response = await fetch(requestUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "text/markdown",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: markdownContent,
+    });
+
+    if (response.ok) {
+      return { success: true };
+    } else {
+      throw new Error("Error saving link to Obsidian");
+    }
+  } catch (error) {
+    console.error("Error saving link to Obsidian:", error);
+    throw error;
+  }
+}
+
+async function fetchExistingTags() {
+  try {
+    const { apiUrl, apiPort, apiKey } = await getConfig();
+    const requestUrl = `${apiUrl}:${apiPort}/search/`;
+    const requestBody = JSON.stringify({
+      ">=": [
+        {
+          "var": "tags.length"
+        },
+        1
+      ]
+    });
+
+    const response = await fetch(requestUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/vnd.olrapi.jsonlogic+json",
+        Authorization: `Bearer ${apiKey}`
+      },
+      body: requestBody
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+
+    const tags = await Promise.all(data.map(async (item) => {
+      const noteResponse = await fetch(`${apiUrl}:${apiPort}/vault/${item.filename}`, {
+        headers: {
+          Accept: "application/vnd.olrapi.note+json",
+          Authorization: `Bearer ${apiKey}`
+        }
+      });
+      if (!noteResponse.ok) {
+        throw new Error(`HTTP error! status: ${noteResponse.status}`);
       }
-    );
-  });
+      const note = await noteResponse.json();
+      return note.tags;
+    }));
+
+    const uniqueTags = [...new Set(tags.flat())];
+    console.log("Fetched tags:", uniqueTags);
+    return uniqueTags;
+  } catch (error) {
+    console.error("Error fetching tags:", error);
+    throw error;
+  }
 }
 
 function sanitizeFilename(filename) {
   return filename.replace(/[/\\?%*:|"<>.]/g, '_').replace(/\s+/g, ' ').trim();
 }
 
-
-function fetchExistingTags() {
+async function getConfig() {
   return new Promise((resolve, reject) => {
-    chrome.storage.sync.get(["apiUrl", "apiPort", "apiKey"], (result) => {
-      const apiUrl = result.apiUrl || "https://127.0.0.1";
-      const apiPort = result.apiPort || "27124";
-      const apiKey = result.apiKey || "";
-
-      const requestUrl = `${apiUrl}:${apiPort}/search/`;
-      const requestBody = JSON.stringify({
-        ">=": [
-          {
-            "var": "tags.length"
-          },
-          1
-        ]
+    chrome.storage.sync.get(["apiUrl", "apiPort", "apiKey", "defaultFolder"], (result) => {
+      if (chrome.runtime.lastError) {
+        return reject(chrome.runtime.lastError);
+      }
+      resolve({
+        apiUrl: result.apiUrl || "https://127.0.0.1",
+        apiPort: result.apiPort || "27124",
+        apiKey: result.apiKey || "",
+        defaultFolder: result.defaultFolder || "Links",
       });
-
-      fetch(requestUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/vnd.olrapi.jsonlogic+json",
-          Authorization: `Bearer ${apiKey}`
-        },
-        body: requestBody
-      })
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
-          return response.json();
-        })
-        .then((data) => {
-          const notePromises = data.map((item) => {
-            return fetch(`${apiUrl}:${apiPort}/vault/${item.filename}`, {
-              headers: {
-                Accept: "application/vnd.olrapi.note+json",
-                Authorization: `Bearer ${apiKey}`
-              }
-            })
-              .then((response) => {
-                if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-              })
-              .then((note) => note.tags);
-          });
-
-          Promise.all(notePromises)
-            .then((tagArrays) => {
-              const tags = [...new Set(tagArrays.flat())];
-              console.log("Fetched tags:", tags);
-              resolve(tags);
-            })
-            .catch((error) => {
-              console.error("Error fetching tags for notes:", error);
-              reject(error);
-            });
-        })
-        .catch((error) => {
-          console.error("Error fetching notes with tags:", error);
-          reject(error);
-        });
     });
   });
 }

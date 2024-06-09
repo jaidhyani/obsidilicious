@@ -8,15 +8,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const notesInput = document.getElementById("notes");
   const commonTagsContainer = document.getElementById("common-tags");
 
-  chrome.runtime.sendMessage({ action: "fetchExistingTags" }, (response) => {
-    if (response.tags) {
-      const existingTags = response.tags;
-      enableTagAutocomplete(existingTags);
-      displayCommonTags(existingTags);
-    } else {
-      console.error("Error fetching existing tags:", response.error);
-    }
-  });
+  const tagCacheTTL = 3600000; // 1 hour in milliseconds
+
+  const cachedTags = sessionStorage.getItem('cachedTags');
+  const cachedTagsTimestamp = sessionStorage.getItem('cachedTagsTimestamp');
+  const now = Date.now();
+
+  if (cachedTags && cachedTagsTimestamp && (now - cachedTagsTimestamp < tagCacheTTL)) {
+    const existingTags = JSON.parse(cachedTags);
+    enableTagAutocomplete(existingTags);
+    displayCommonTags(existingTags);
+  } else {
+    fetchAndCacheTags();
+  }
+
+  function fetchAndCacheTags() {
+    chrome.runtime.sendMessage({ action: "fetchExistingTags" }, (response) => {
+      if (response.tags) {
+        const existingTags = response.tags;
+        sessionStorage.setItem('cachedTags', JSON.stringify(existingTags));
+        sessionStorage.setItem('cachedTagsTimestamp', Date.now());
+        enableTagAutocomplete(existingTags);
+        displayCommonTags(existingTags);
+      } else {
+        console.error("Error fetching existing tags:", response.error);
+      }
+    });
+  }
 
   function enableTagAutocomplete(tags) {
     new Awesomplete(tagsInput, {
@@ -41,7 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     commonTags.forEach((tag) => {
       const button = document.createElement("button");
-      button.textContent = `#${tag}`;
+      button.textContent = tag;
       button.className = "common-tag";
       button.type = "button"; // Prevent form submission
       button.addEventListener("click", (event) => {
@@ -53,14 +71,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function toggleTag(tag) {
-    const currentTags = tagsInput.value.split(',').map(t => t.trim().replace(/^#/, '')).filter(t => t.length > 0);
+    const currentTags = parseTags(tagsInput.value);
     const tagIndex = currentTags.indexOf(tag);
     if (tagIndex === -1) {
       currentTags.push(tag);
     } else {
       currentTags.splice(tagIndex, 1);
     }
-    tagsInput.value = currentTags.map(t => `#${t}`).join(', ');
+    tagsInput.value = currentTags.join(', ');
   }
 
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -77,7 +95,7 @@ document.addEventListener("DOMContentLoaded", () => {
             note.frontmatter["page-title"] || currentTab.title;
           datetimeInput.value = note.frontmatter.datetime || getCurrentDateTimeLocal();
           folderInput.value = getFolderFromPath(note.path) || "";
-          tagsInput.value = note.tags.map(tag => `#${tag}`).join(", ");
+          tagsInput.value = note.tags.join(", ");
           notesInput.value = note.content
             .replace(/^---\n.*?\n---\n/s, "")
             .trim();
@@ -97,13 +115,20 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", (event) => {
     event.preventDefault();
 
+    const url = urlInput.value.trim();
+    const pageTitle = pageTitleInput.value.trim();
+    if (!url || !pageTitle) {
+      alert('URL and Page Title are required');
+      return;
+    }
+
     const formData = new FormData(form);
     const data = {
       url: formData.get("url"),
       pageTitle: formData.get("page-title"),
       datetime: formData.get("datetime"),
       folder: formData.get("folder"),
-      tags: formData.get("tags").split(',').map(t => t.trim().replace(/^#/, '')).join(', '),
+      tags: parseTags(formData.get("tags")).join(', '),
       notes: formData.get("notes"),
     };
 
@@ -134,5 +159,11 @@ function getFolderFromPath(path) {
 
 function getCurrentDateTimeLocal() {
   const now = new Date();
-  return now.toISOString().slice(0, 16); // Return datetime-local format
+  const tzOffset = now.getTimezoneOffset() * 60000; // Offset in milliseconds
+  const localISOTime = new Date(now - tzOffset).toISOString().slice(0, 16);
+  return localISOTime;
+}
+
+function parseTags(tagsString) {
+  return tagsString.split(/[, ]+/).map(tag => tag.trim()).filter(tag => tag.length > 0);
 }

@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const apiPortInput = document.getElementById('api-port');
   const apiKeyInput = document.getElementById('api-key');
   const defaultFolderInput = document.getElementById('default-folder');
+  const refreshTagsButton = document.getElementById('refresh-tags');
 
   chrome.storage.sync.get(['apiUrl', 'apiPort', 'apiKey', 'defaultFolder'], (result) => {
     apiUrlInput.value = result.apiUrl || 'https://127.0.0.1';
@@ -22,6 +23,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     chrome.storage.sync.set({ apiUrl, apiPort, apiKey, defaultFolder }, () => {
       alert('Options saved successfully!');
+    });
+  });
+
+  refreshTagsButton.addEventListener('click', () => {
+    chrome.runtime.sendMessage({ action: 'fetchExistingTags' }, (response) => {
+      if (response.tags) {
+        sessionStorage.setItem('cachedTags', JSON.stringify(response.tags));
+        sessionStorage.setItem('cachedTagsTimestamp', Date.now());
+        alert('Tags refreshed successfully.');
+      } else {
+        console.error('Error refreshing tags:', response.error);
+        alert('Error refreshing tags.');
+      }
     });
   });
 });
